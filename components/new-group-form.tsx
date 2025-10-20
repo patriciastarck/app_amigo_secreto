@@ -2,11 +2,16 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@radix-ui/react-label";
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Mail, Trash, Trash2 } from "lucide-react";
+import { Loader, Mail, Trash, Trash2 } from "lucide-react";
 import { Separator } from "./ui/separator";
+import { CreateGroupState } from "@/app/app/grupos/novo/actions";
+import { toast } from "sonner";
+import { createGroup } from "@/app/app/grupos/novo/actions";
+
+
 
 interface Participant {
     name: string;
@@ -18,12 +23,22 @@ export default function NewGroupForm ({
 }: {
     loggedUser: {email: string; id: string};
 }) {
+    
     const [participants, setParticipants] = useState<Participant[]>([
         {name: "", email: loggedUser.email},
-        {name: "", email: "jose@gmail.com"},
+        
     ])
 
     const [groupName, setGroupName] = useState("");
+
+    const [state, formAction, pending] = useActionState<
+    CreateGroupState, 
+    FormData
+    >(createGroup, {
+        success: null,
+        message: ""
+    })
+
 
     function updateParticipant(
         index: number, 
@@ -44,6 +59,16 @@ export default function NewGroupForm ({
         setParticipants(participants.concat({name: "", email: ""}))
     }
 
+    useEffect(() => {
+  if (state.success === false) {
+    // 1. O primeiro argumento é a mensagem principal (título ou conteúdo)
+    // 2. O segundo argumento é um objeto de opções (incluindo descrição)
+    toast.error("Ocorreu um erro!", {
+      description: state.message, // Descrição com a mensagem do estado
+    });
+  }
+}, [state]);
+
     return(
         <Card className="w-full max-w-2xl mx-auto">
             <CardHeader>
@@ -52,7 +77,7 @@ export default function NewGroupForm ({
                     Convide seus amigos para participar
                 </CardDescription>
             </CardHeader>
-            <form action={() => {}}>
+            <form action={() => {formAction}}>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="group-name">Nome do grupo</Label>
@@ -131,6 +156,7 @@ export default function NewGroupForm ({
                     className="flex items-center space-x-2 w-full md:w-auto"
                     >
                         <Mail className="w-3 h-3" />Criar grupo e enviar emails
+                        {pending && <Loader className="animate-spin" />}
                     </Button>
 
                 </CardFooter>

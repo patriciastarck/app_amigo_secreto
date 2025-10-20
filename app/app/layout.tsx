@@ -1,6 +1,8 @@
 import Header from "@/components/header";
 import { createClient } from "@/utils/supabase/server";
+import { Toast, ToastProvider } from "@radix-ui/react-toast";
 import { redirect } from "next/navigation";
+import { Toaster } from "sonner";
 
 
 export default async function AppLayout({
@@ -19,6 +21,7 @@ export default async function AppLayout({
         <div>
             <Header />
             {children}
+            <Toaster />
         </div>
     )
 }

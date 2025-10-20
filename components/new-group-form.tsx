@@ -77,7 +77,7 @@ export default function NewGroupForm ({
                     Convide seus amigos para participar
                 </CardDescription>
             </CardHeader>
-            <form action={() => {formAction}}>
+            <form action={formAction}>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="group-name">Nome do grupo</Label>

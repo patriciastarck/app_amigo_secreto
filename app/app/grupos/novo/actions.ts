@@ -26,5 +26,19 @@ export async function createGroup(
     const email = formData.getAll("email");
     const groupName = formData.get("groupName")
 
-    console.log(names, email, groupName)
+    // slavar o grupo
+    const { data: newGroup, error } = await supabase.from("groups").insert({
+        name: groupName,
+        owner_id: authUser?.user.id
+    })    
+    .select()
+    .single()
+
+    if(error) {
+        return {
+            success: false,
+            message: "Ocorreu um erro ao criar o grupo. Por favor, tente novamente."
+        }
+    }
+    console.log(newGroup)
 }

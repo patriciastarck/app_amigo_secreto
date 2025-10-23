@@ -1,6 +1,10 @@
 'use server'
 
 import { createClient } from "@/utils/supabase/server";
+import { error } from "console";
+import { redirect } from 'next/navigation';
+import { Resend } from "resend";
+
 
 export type CreateGroupState = {
     success: null | boolean;
@@ -22,23 +26,134 @@ export async function createGroup(
             message: "Ocorreu um erro ao criar o grupo"
         }
     } 
-    const names = formData.getAll("name");
-    const email = formData.getAll("email");
-    const groupName = formData.get("groupName")
 
-    // slavar o grupo
+    const names = formData.getAll("name");
+    const emails = formData.getAll("email");
+    const groupName = formData.get("group-name")
+    //até aqui funciona
+    
+    //salvar
     const { data: newGroup, error } = await supabase.from("groups").insert({
         name: groupName,
         owner_id: authUser?.user.id
-    })    
-    .select()
-    .single()
+    })
 
-    if(error) {
+    .select()
+    .single()   
+
+    if (error) {
         return {
             success: false,
-            message: "Ocorreu um erro ao criar o grupo. Por favor, tente novamente."
+            message: "Ocorreu um erro ao criar o grupo. Tente novamente"
         }
+    };
+
+    //participantes   
+
+    const participants = names.map((name, index)=> ({
+        group_id: newGroup.id,
+        name,
+        email: emails[index]
+    }))
+
+    const { data: createdParticipants, error:errorParticipants } = await supabase
+        .from("participants")
+        .insert(participants)
+        .select();
+
+        if (errorParticipants) {
+        return {
+            success: false,
+            message: "Ocorreu um erro ao adicionar os participantes ao grupo. Tente novamente"
+        }
+    };
+
+    const drawnParticipants = drawnGroup(createdParticipants);
+        const { error: errorDrawn } = await supabase
+        .from("participants")
+        .upsert(drawnParticipants);           
+        
+     if (errorDrawn) {
+        return {
+            success: false,
+            message: "Ocorreu um erro ao sortear os participantes do grupo. Tente novamente"
+        };
+    }     
+    
+    //enviar os emails
+    const { error: errorResend } = await sendEmailToParticipants(
+        drawnParticipants,
+        groupName as string
+    );
+     if (errorResend) {
+        return {
+            success: false,
+            message: errorResend,
+        };
+    }  
+
+    redirect(`/app/grupos/${newGroup.id}`)
+
     }
-    console.log(newGroup)
+
+    type Participant = {
+        id: string;
+        group_id: string;
+        name: string;
+        emails: string;
+        assigned_to: string | null;
+        created_at: string;
+    };
+
+    function drawnGroup(participants: Participant[]) {
+        const selectedParticipants: string[] = [];
+
+        return participants.map((participant) => {
+            const availableParticipants = participants.filter(
+                (p) => p.id != participant.id && !selectedParticipants.includes(p.id)
+            )
+
+            const assignedParticipant = availableParticipants[
+                Math.floor(Math.random() * availableParticipants.length)
+            ]
+
+            selectedParticipants.push(assignedParticipant.id);
+
+            return {
+                ...participant,
+                assigned_to: assignedParticipant.id,
+            };
+        })    
+    }
+
+    async function sendEmailToParticipants(
+        participants: Participant[],
+        groupName: string
+    ) {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        try{
+            await Promise.all(
+                participants.map(participant => {
+                    resend.emails.send({
+                        from: 'Amigo Secreto <onboarding@resend.dev>',
+                        to: participant.emails,
+                        subject: `Sorteio de amigo secreto - ${groupName}`,
+                        html: `<p>Você está participando do amigo secreto do grupo "${groupName}".<br/><br/>
+                        O meu amigo secreto é <strong>${
+                            participants.find((p) => p.id === participant.assigned_to)?.name
+                        }</strong>!</p>
+                        `,    
+                    })
+                })
+            );
+            return { error:null };
+        } catch {
+            return { error: "Ocorreu um erro ao enviar os emails."}
+    }
 }
+
+    
+
+      
+    

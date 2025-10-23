@@ -83,7 +83,7 @@ export default function NewGroupForm ({
                         <Label htmlFor="group-name">Nome do grupo</Label>
                         <Input 
                             id="group-name"
-                            name="groupe-name"
+                            name="group-name"
                             value={groupName}
                             onChange={(e) => setGroupName(e.target.value)}
                             placeholder="Digite o nome do grupo"
